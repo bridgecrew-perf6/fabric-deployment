@@ -1,0 +1,17 @@
+[Unit]
+Description=gunicorn daemon
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=%(proj_path)s
+ExecStart=/home/ubuntu/venvs/geographyEnv/bin/gunicorn \
+          --access-logfile - \
+          --workers 3 \
+          --bind unix:/run/gunicorn.sock \
+          geography.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
