@@ -371,7 +371,6 @@ def migrate_and_create_symlink(host):
         create_symlink(conn, env.release_dir, env.current_version_dir)
 
 
-
 def get_templates():
     """
     Returns each of the templates with env vars injected.

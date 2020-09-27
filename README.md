@@ -7,12 +7,12 @@
 * run `fab prod deploy --branch  <tag/branch>` to deploy the respective tag/branch 
 * run `fab prod rollback` to rollback to current deployment to previous release
 * run `fab prod rollback --version <version>` to rollback to specified version (supports 1,2 and 3)
+* run `fab prod run <cmd>` to run a specific command on hosts mentioned in `config.yaml` eg: `fab prod run 'uname -s'`
 
-### Note ### 
+#### Note ####
 * By default currently last 3 releases are saved on hosts and hence rollback is support for last 3 deployments
 * This repo uses the concept of atomic deployments for zero downtime deployment.
 Read more about this [here](https://buddy.works/blog/introducing-atomic-deployments)
-
 * Do try deployments using this repo and create an issue in case something is not working
 
 *Pull requests for feature enhancement are welcome* 
