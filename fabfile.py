@@ -71,7 +71,6 @@ def default_config():
     env.venv_path = os.path.join(env.venv_home, env.proj_name)
 
     env.proj_path = env.current_version_dir
-    env.shared_path = env.shared_dir
 
 
 ######################################
