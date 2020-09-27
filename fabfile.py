@@ -371,13 +371,6 @@ def migrate_and_create_symlink(host):
         create_symlink(conn, env.release_dir, env.current_version_dir)
 
 
-def dir_exists(conn, path):
-    return conn.run("[ -d {} ]".format(path)).exited == 0
-
-
-def file_exists(conn, path):
-    return conn.run("[ -f {} ]".format(path)).exited == 0
-
 
 def get_templates():
     """
