@@ -1,7 +1,7 @@
-## Currently the repository supports deployment and setup of django projects on linux based multiple hosts
+## Currently the repository supports deployment and setup of django projects on linux based hosts
 
 * To use  clone the repo using git  and create a file `config.yaml` using the `config.yaml.sample`
-* Add your prouduction and stating .env files to 'production-envs' and 'staging-envs' buckets on S3
+* Add your prouduction and stating .env files to `production-envs` and `staging-envs` S3 buckets respectively
 * run `fab prod setup` or `fab staging setup` to setup the environments on hosts defined in `config.yaml`
 * run `fab prod deploy` to  deploy the current master branch 
 * run `fab prod deploy --branch  <tag/branch>` to deploy the respective tag/branch 
