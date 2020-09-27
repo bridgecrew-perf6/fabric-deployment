@@ -37,7 +37,7 @@ templates = {
     },
     "gunicorn_conf": {
         "local_path": "deploy/gunicorn.conf.py.template",
-        "remote_path": "%(proj_path)s/gunicorn.conf.py",
+        "remote_path": "%(release_dir)s/gunicorn.conf.py",
     },
     "gunicorn_socket": {
         "local_path": "deploy/gunicorn.socket.template",
@@ -237,6 +237,7 @@ def setup_release(host, branch):
         with conn.cd(env.release_dir):
             conn.run("mkdir -p logs")
             install_python_requirements(conn)
+        upload_template_and_reload(conn, 'gunicorn_conf')
 
 
 def update_env(host):
@@ -254,7 +255,7 @@ def update_env(host):
 
         # create symlink to env file
         conn.run('mv {}/{}  {}/{}'.format(env.shared_dir, filename, env.shared_dir, '.env'))
-        create_symlink(conn, os.path.join(env.shared_dir, '.env'), os.path.join(env.current_app_path, '.env'))
+        create_symlink(conn, os.path.join(env.shared_dir, '.env'), os.path.join(env.release_dir, env.proj_name, '.env'))
 
         # clear environment file form local
         os.remove(filename)
@@ -360,7 +361,7 @@ def install_python_requirements(conn):
 
 
 def migrate_database(conn):
-    with project(conn) as conn:
+    with conn.cd(env.release_dir):
         with virtualenv(conn) as conn:
             conn.run('python manage.py migrate')
 
