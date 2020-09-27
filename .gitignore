@@ -4,4 +4,4 @@
 .DS_Store
 .coverage
 .idea
-config.*
+config.yaml

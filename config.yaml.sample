@@ -1,0 +1,32 @@
+---
+repo_url: 'git@github.com:Dehaat/geography.git'
+proj_name: 'geography'
+production:
+  hosts:
+    - aeros.api.agrevolution.in
+  user: 'xxx'
+  key_file_name: '/Users/deepakkhatri/Downloads/aeros-geo.pem'
+  environment_bucket: 'production-envs'
+  domains_nginx: 'aeros.api.agrevolution.in'
+  aws_access_key_id: 'xxx'
+  aws_secret_access_key: 'xxx'
+  bastion:
+    user: 'dkdocs'
+    host: 'bastion.agrevolution.in'
+    key_file_name: '/Users/deepakkhatri/.ssh/id_rsa'
+    port: 272
+
+staging:
+  hosts:
+    - 13.127.83.212
+  user: 'xxx'
+  key_file_name: '/Users/deepakkhatri/Downloads/aeros-geo.pem'
+  environment_bucket: 'production-envs'
+  domains_nginx: '13.127.83.212'
+  aws_access_key_id: 'xxx'
+  aws_secret_access_key: 'xxx'
+  bastion:
+    user: 'dkdocs'
+    host: 'bastion.dehaatagri.com'
+    key_file_name: '/Users/deepakkhatri/.ssh/id_rsa'
+    port: 272
