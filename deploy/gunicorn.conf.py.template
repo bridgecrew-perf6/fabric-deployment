@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 import multiprocessing
 
-bind = "unix:%(proj_path)s/gunicorn.sock"
+bind = "unix:/run/gunicorn.sock"
 workers = multiprocessing.cpu_count() * 2 + 1
 errorlog = "/home/%(user)s/logs/%(proj_name)s_error.log"
 loglevel = "error"

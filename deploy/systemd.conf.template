@@ -4,14 +4,12 @@ Requires=gunicorn.socket
 After=network.target
 
 [Service]
-User=ubuntu
-Group=ubuntu
+User=%(user)s
+Group=%(user)s
 WorkingDirectory=%(proj_path)s
-ExecStart=/home/ubuntu/venvs/geographyEnv/bin/gunicorn \
-          --access-logfile - \
-          --workers 3 \
-          --bind unix:/run/gunicorn.sock \
-          geography.wsgi:application
+ExecStart=%(venv_path)s/bin/gunicorn \
+          -c gunicorn.conf.py \
+          %(proj_name)s.wsgi:application
 
 [Install]
 WantedBy=multi-user.target
