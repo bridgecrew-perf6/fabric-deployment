@@ -6,6 +6,7 @@ from contextlib import contextmanager
 
 from fabric import Connection, task
 from fabric.config import Config
+from patchwork.files import exists
 
 from config_manager import ConfigManager
 from utils.s3 import S3
@@ -14,7 +15,6 @@ MAX_RELEASES = 3
 PYTHON_VERSION = 3.7
 
 logger.basicConfig(level=logger.INFO)
-logger.basicConfig(format='%(name)s --------- %(message)s')
 
 ##################
 # Template setup #
@@ -78,13 +78,13 @@ def default_config():
 ######################################
 
 @contextmanager
-def project(ctx):
+def project(conn):
     """
     Runs commands within the project's directory.
     """
-    with connection(ctx) as conn:
-        with conn.cd(env.current_version_dir):
-            yield conn
+
+    with conn.cd(env.current_version_dir):
+        yield conn
 
 
 @contextmanager
@@ -113,24 +113,29 @@ def staging(ctx):
 
 
 @task
-def setup(ctx):
+def setup(ctx, branch='master'):
     """
     Installs the base system and Python requirements for the entire server.
     """
-    install_system_requirements(ctx)
-    setup_release(ctx)
-    update_env(ctx)
-    cleanup_old_releases(ctx)
-    upload_templates(ctx)
-    restart_services(ctx)
+    for host in env.hosts:
+        install_system_requirements(host)
+        setup_release(host, branch)
+        update_env(host)
+        cleanup_old_releases(host)
+        upload_templates(host)
+        migrate_and_create_symlink(host)
+        restart_services(host)
 
 
 @task
-def deploy(ctx):
-    setup_release(ctx)
-    # update_env(ctx)
-    cleanup_old_releases(ctx)
-    restart_services(ctx)
+def deploy(ctx, branch='master'):
+    for host in env.hosts:
+        setup_release(host, branch)
+        update_env(host)
+        cleanup_old_releases(host)
+        migrate_and_create_symlink(host)
+        restart_services(host)
+        print('successfully deployed {} to host {}'.format(branch, host))
 
 
 @task
@@ -138,34 +143,31 @@ def run(ctx, cmd):
     """
     Runs a Command to selected env i.e staging or prod
     """
-    with connection(ctx) as conn:
-        conn.run(cmd)
+    for host in env.hosts:
+        with connection(host) as conn:
+            conn.run(cmd)
 
 
 @task
-def rollback(ctx):
-    with connection(ctx) as conn:
-        releases = conn.run('ls -xt {}'.format(env.main_release_dir)).stdout.split()
-        if len(releases) < 2:
-            logger.error("cannot rollback")
-            quit(1)
-        rollback_release_index = env.int('ROLLBACK_RELEASE', None)
-        index = releases.index(rollback_release_index) if rollback_release_index else 1
-        if not index:
-            logger.error('cannot found rollback release')
-            quit(1)
-
-        last_release = releases[index]
-        create_symlink(conn, os.path.join(env.main_release_dir, last_release), env.current_ver_dir)
-    restart_services(ctx)
+def rollback(ctx, version=1):
+    for host in env.hosts:
+        with connection(host) as conn:
+            releases = conn.run('ls -xt {}'.format(env.main_release_dir)).stdout.split()
+            if len(releases) < 2:
+                logger.error("cannot rollback")
+                quit(1)
+            index = version
+            last_release = releases[index]
+            create_symlink(conn, os.path.join(env.main_release_dir, last_release), env.current_version_dir)
+        restart_services(host)
 
 
 #########################
 # Install and configure #
 #########################
 
-def install_system_requirements(ctx):
-    with connection(ctx) as conn:
+def install_system_requirements(host):
+    with connection(host) as conn:
         os_type = conn.run('echo $OSTYPE')
 
         if os_type.stdout.strip() != 'linux-gnu':
@@ -195,7 +197,6 @@ def install_system_requirements(ctx):
 
         # create log directories
         conn.run("mkdir -p /home/%s/logs" % env.user)
-        conn.run("mkdir -p %s/logs" % env.current_version_dir)
 
         # install virtual env
         conn.sudo('apt install virtualenv -y -q')
@@ -211,24 +212,24 @@ def install_system_requirements(ctx):
             conn.run('pip install "GDAL<=$(gdal-config --version)"')
 
 
-def setup_release(ctx):
-    with connection(ctx) as conn:
-        if not dir_exists(conn, env.deploy_dir):
+def setup_release(host, branch):
+    with connection(host) as conn:
+        if not exists(conn, env.deploy_dir):
             conn.run('mkdir -p ' + env.deploy_dir)
 
-        if not dir_exists(conn, env.main_release_dir):
+        if not exists(conn, env.main_release_dir):
             logger.info("Creating Main release dir ~/releases/")
             conn.run('mkdir -p ' + env.main_release_dir)
             conn.run('mkdir -p ' + env.release_dir)
 
-        if dir_exists(conn, env.cache_dir):
+        if exists(conn, env.cache_dir):
             # clean up cache dir if exists
             remove(conn, env.cache_dir)
 
         logger.info("Creating Git cache dir")
         conn.run('mkdir -p ' + env.cache_dir)
         logger.info("Cloning repo")
-        clone_project(conn, env.cache_dir)
+        clone_project(conn, branch, env.cache_dir)
 
         with conn.cd(env.cache_dir):
             conn.run('cp -R . {}'.format(env.release_dir))
@@ -237,16 +238,14 @@ def setup_release(ctx):
             conn.run("mkdir -p logs")
             install_python_requirements(conn)
 
-        create_symlink(conn, env.release_dir, env.current_version_dir)
 
-
-def update_env(ctx):
+def update_env(host):
     client = S3(env.aws_access_key_id, env.aws_secret_access_key)
     filename = env.proj_name + '.env'
     client.download_file(filename, env.environment_bucket, filename)
 
-    with connection(ctx) as conn:
-        if not dir_exists(conn, env.shared_dir):
+    with connection(host) as conn:
+        if not exists(conn, env.shared_dir):
             logger.info("Creating Shared dir")
             conn.run('mkdir -p ' + env.shared_dir)
 
@@ -261,20 +260,20 @@ def update_env(ctx):
         os.remove(filename)
 
 
-def restart_services(ctx):
-    with connection(ctx) as conn:
+def restart_services(host):
+    with connection(host) as conn:
         conn.sudo('service nginx restart')
         conn.sudo('service gunicorn restart')
 
 
-def cleanup_old_releases(ctx):
-    with connection(ctx) as conn:
+def cleanup_old_releases(host):
+    with connection(host) as conn:
         releases = conn.run('ls -x {}'.format(env.main_release_dir)).stdout.split()
         valid = [x for x in releases if re.search(r'release-(\d+)', x).groups()]
         if len(valid) > MAX_RELEASES:
             directories = list(
                 map(lambda x: os.path.join(env.main_release_dir, x), list(set(valid) - set(valid[-MAX_RELEASES:]))))
-            if dir_exists(conn, env.current_version_dir):
+            if exists(conn, env.current_version_dir):
                 current_release = conn.run('readlink {}'.format(env.current_version_dir)).stdout.strip()
                 if current_release in directories:
                     logger.warning('wont delete current release {} '.format(conn.host))
@@ -288,8 +287,8 @@ def cleanup_old_releases(ctx):
                 logger.info('no old releases {}'.format(conn.host))
 
 
-def upload_templates(ctx):
-    with connection(ctx) as conn:
+def upload_templates(host):
+    with connection(host) as conn:
         upload_template_and_reload(conn, 'gunicorn_conf')
         upload_template_and_reload(conn, 'gunicorn_socket')
         upload_template_and_reload(conn, 'systemd')
@@ -311,7 +310,7 @@ def upload_template_and_reload(conn, name):
     reload_command = template.get("reload_command")
 
     remote_data = ""
-    if file_exists(conn, remote_path):
+    if exists(conn, remote_path):
         remote_data = conn.run('cat {}'.format(remote_path)).stdout.strip()
     with open(local_path, "r") as f:
         local_data = f.read()
@@ -348,16 +347,28 @@ def create_symlink(conn, source, dst):
     conn.run('ln -sTf %s %s' % (source, dst))
 
 
-def clone_project(conn, path):
+def clone_project(conn, branch, path):
     """
        Clones git repo with env.proj_name
     """
-    conn.run("git clone {} {}".format(env.repo_url, path))
+    conn.run("git clone --depth 1 -b {} {} {}".format(branch, env.repo_url, path))
 
 
 def install_python_requirements(conn):
     with virtualenv(conn) as conn:
         conn.run('pip install -r requirements.txt')
+
+
+def migrate_database(conn):
+    with project(conn) as conn:
+        with virtualenv(conn) as conn:
+            conn.run('python manage.py migrate')
+
+
+def migrate_and_create_symlink(host):
+    with connection(host) as conn:
+        migrate_database(conn)
+        create_symlink(conn, env.release_dir, env.current_version_dir)
 
 
 def dir_exists(conn, path):
@@ -379,11 +390,11 @@ def get_templates():
 
 
 @contextmanager
-def connection(ctx):
-    cfg = Config(overrides={"run": {'echo': True, 'pty': True}})
+def connection(host):
+    cfg = Config(overrides={"run": {'echo': True, 'hide': False}})
     with Connection(
-            env.hosts[0],
-            env.user,
+            host,
+            user=env.user,
             connect_kwargs={"key_filename": env.key_file_name, "allow_agent": True},
             gateway=bastion_connection(),
             config=cfg,

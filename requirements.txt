@@ -1,6 +1,4 @@
-fabric
-django-environ
-boto3
-botocore~=1.15.49
-PyYAML
-configmanager
+fabric==2.5.0
+boto3==1.15.5
+PyYAML==5.3.1
+patchwork==1.0.1
