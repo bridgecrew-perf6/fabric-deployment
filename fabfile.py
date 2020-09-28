@@ -7,8 +7,10 @@ from contextlib import contextmanager
 from fabric import Connection, task
 from fabric.config import Config
 from patchwork.files import exists
+from termcolor import colored
 
 from config_manager import ConfigManager
+from utils import success, failure
 from utils.s3 import S3
 
 MAX_RELEASES = 3
@@ -117,25 +119,35 @@ def setup(ctx, branch='master'):
     """
     Installs the base system and Python requirements for the entire server.
     """
-    for host in env.hosts:
-        install_system_requirements(host)
-        setup_release(host, branch)
-        update_env(host)
-        cleanup_old_releases(host)
-        upload_templates(host)
-        migrate_and_create_symlink(host)
-        restart_services(host)
+    try:
+        for host in env.hosts:
+            install_system_requirements(host)
+            setup_release(host, branch)
+            update_env(host)
+            cleanup_old_releases(host)
+            upload_templates(host)
+            migrate_and_create_symlink(host)
+            restart_services(host)
+        print(colored(success, 'green'))
+    except Exception as e:
+        print(colored(failure, 'red'))
+        raise e
 
 
 @task
 def deploy(ctx, branch='master'):
-    for host in env.hosts:
-        setup_release(host, branch)
-        update_env(host)
-        cleanup_old_releases(host)
-        migrate_and_create_symlink(host)
-        restart_services(host)
-        print('successfully deployed {} to host {}'.format(branch, host))
+    try:
+        for host in env.hosts:
+            setup_release(host, branch)
+            update_env(host)
+            cleanup_old_releases(host)
+            migrate_and_create_symlink(host)
+            restart_services(host)
+            print('successfully deployed {} to host {}'.format(branch, host))
+        print(colored(success, 'green'))
+    except Exception as e:
+        print(colored(failure, 'red'))
+        raise e
 
 
 @task
@@ -150,16 +162,22 @@ def run(ctx, cmd):
 
 @task
 def rollback(ctx, version=1):
-    for host in env.hosts:
-        with connection(host) as conn:
-            releases = conn.run('ls -xt {}'.format(env.main_release_dir)).stdout.split()
-            if len(releases) < 2:
-                logger.error("cannot rollback")
-                quit(1)
-            index = version
-            last_release = releases[index]
-            create_symlink(conn, os.path.join(env.main_release_dir, last_release), env.current_version_dir)
-        restart_services(host)
+    try:
+        for host in env.hosts:
+            with connection(host) as conn:
+                releases = conn.run('ls -xt {}'.format(env.main_release_dir)).stdout.split()
+                if len(releases) < 2:
+                    logger.error("cannot rollback")
+                    quit(1)
+                index = version
+                last_release = releases[index]
+                create_symlink(conn, os.path.join(env.main_release_dir, last_release), env.current_version_dir)
+            restart_services(host)
+            print('successfully rollback on host {} '.format(host))
+        print(colored(success, 'green'))
+    except Exception as e:
+        print(colored(failure, 'red'))
+        raise e
 
 
 #########################
