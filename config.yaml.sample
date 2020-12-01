@@ -1,32 +1,32 @@
 ---
-repo_url: 'git@github.com:Dehaat/geography.git'
-proj_name: 'geography'
+repo_url: 'GIT REPO URL'
+proj_name: 'PROJECT NAME'
 production:
   hosts:
-    - aeros.api.agrevolution.in
+    - xxx
   user: 'xxx'
-  key_file_name: '/Users/deepakkhatri/Downloads/aeros-geo.pem'
+  key_file_name: 'PATH TO PEM FILE'
   environment_bucket: 'production-envs'
-  domains_nginx: 'aeros.api.agrevolution.in'
+  domains_nginx: 'XXX'
   aws_access_key_id: 'xxx'
   aws_secret_access_key: 'xxx'
   bastion:
     user: 'dkdocs'
-    host: 'bastion.agrevolution.in'
-    key_file_name: '/Users/deepakkhatri/.ssh/id_rsa'
+    host: 'XXX'
+    key_file_name: 'PATH TO BASTION ACCESS FILE'
     port: 272
 
 staging:
   hosts:
-    - 13.127.83.212
+    - xxx
   user: 'xxx'
-  key_file_name: '/Users/deepakkhatri/Downloads/aeros-geo.pem'
-  environment_bucket: 'production-envs'
-  domains_nginx: '13.127.83.212'
+  key_file_name: 'PATH TO PEM FILE'
+  environment_bucket: staging-envs'
+  domains_nginx: 'XXX'
   aws_access_key_id: 'xxx'
   aws_secret_access_key: 'xxx'
   bastion:
     user: 'dkdocs'
-    host: 'bastion.dehaatagri.com'
-    key_file_name: '/Users/deepakkhatri/.ssh/id_rsa'
+    host: 'XXX'
+    key_file_name: 'PATH TO BASTION ACCESS FILE'
     port: 272
